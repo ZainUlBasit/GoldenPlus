@@ -17,4 +17,5 @@ const CategorySchema = new Schema({
   branch: reqNum,
 });
 
-module.exports = mongoose.model("Category", CategorySchema);
+module.exports =
+  mongoose.models.Article || mongoose.model("Article", CategorySchema);
