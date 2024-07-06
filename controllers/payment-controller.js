@@ -108,16 +108,29 @@ const getBranchPayments = async (req, res, next) => {
     endDate = Math.floor(Date.now() / 1000),
   } = req.body;
 
+  console.log(req.body);
+
   let branchPayments;
   try {
-    branchPayments = await Payment.find({
-      user_Id,
-      branch,
-      date: {
-        $gte: Math.floor(new Date(startDate) / 1000),
-        $lte: Math.floor(new Date(endDate) / 1000),
-      },
-    });
+    const Payload =
+      branch === -1
+        ? {
+            user_Id,
+            date: {
+              $gte: Math.floor(new Date(startDate) / 1000),
+              $lte: Math.floor(new Date(endDate) / 1000),
+            },
+          }
+        : {
+            user_Id,
+            branch,
+            date: {
+              $gte: Math.floor(new Date(startDate) / 1000),
+              $lte: Math.floor(new Date(endDate) / 1000),
+            },
+          };
+
+    branchPayments = await Payment.find(Payload);
     // console.log(branchPayments);
 
     if (!branchPayments) {

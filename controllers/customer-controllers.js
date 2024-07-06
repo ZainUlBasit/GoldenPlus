@@ -5,6 +5,8 @@ const { createError, successMessage } = require("../utils/ResponseMessage");
 const Customer = require("../Models/Customer");
 const { isValidObjectId } = require("mongoose");
 const User = require("../Models/User");
+const Transaction = require("../Models/Transaction");
+const Return = require("../Models/Return");
 
 //******************************************************
 // working
@@ -34,8 +36,8 @@ const getBranchCustomers = async (req, res, next) => {
 
   let customers;
   try {
-    // customers = await Customer.find({ branch });
-    customers = await Customer.find({ branch: branch });
+    if (branch < 0) customers = await Customer.find();
+    else customers = await Customer.find({ branch: branch });
     // console.log("customers:", customers);
     if (!customers) return createError(res, 404, "No Item Found");
     return successMessage(res, customers, null);
@@ -49,24 +51,9 @@ const UpdateCustomer = async (req, res, next) => {
   const { customerId, payload } = req.body;
   const reqStr = Joi.string().required();
   const reqNum = Joi.number().required();
-  const customerPayloadSchema = Joi.object({
-    name: reqStr,
-    email: reqStr,
-    password: reqStr,
-    cnic: reqStr,
-    contact: reqStr,
-    address: reqStr,
-    branch: reqNum,
-    ref: reqStr,
-    page: reqNum,
-  });
-  const CustomerUpdateSchema = Joi.object({
-    itemId: reqStr,
-    payload: Joi.object().min(1).required().keys(customerPayloadSchema),
-  });
-  // check if the validation returns error
-  const { error } = CustomerUpdateSchema.validate(req.body.values);
-  if (error) return createError(res, 422, error.message);
+
+  if (!customerId || !payload)
+    return createError(res, 422, "Required fields are undefined!");
   try {
     let customer = await Customer.findById(customerId);
     if (!customer)
@@ -82,19 +69,14 @@ const UpdateCustomer = async (req, res, next) => {
   }
 };
 const deleteCustomer = async (req, res, next) => {
-  const { customerId } = req.body;
+  const { id: customerId } = req.params;
+  console.log(customerId);
 
-  const CustomerSchema = Joi.object({
-    customerId: Joi.string().required(),
-  });
-  const { error } = CustomerSchema.validate(req.body.values);
-  if (error) return createError(res, 422, error.message);
-
-  if (!isValidObjectId(customerId))
-    return createError(res, 422, "Invalid Customer Id!");
+  if (!customerId)
+    return createError(res, 422, "Required fields are undefined!");
 
   try {
-    const DeleteCustomer = await Company.findByIdAndDelete(customerId);
+    const DeleteCustomer = await Customer.findByIdAndDelete(customerId);
     if (!DeleteCustomer)
       return createError(
         res,
@@ -227,7 +209,65 @@ const addCustomer = async (req, res, next) => {
   }
 };
 
+const Get_Bill_No = async (req, res) => {
+  const { id: customerId } = req.params;
+  try {
+    if (!customerId) {
+      return createError(res, 422, "Customer ID is required!");
+    }
+    const transactions = await Transaction.find({ customerId });
+
+    const UpdatedTransactions = transactions
+      .map((data) => {
+        const itemsData = data.items.map((dt) => {
+          return {
+            invoice_no: data.invoice_no,
+            type: 1,
+          };
+        });
+        return itemsData;
+      })
+      .flat();
+
+    const returns = await Return.find({
+      customerId,
+    });
+
+    const UpdatedReturns = returns
+      .map((data) => {
+        const itemsData = data.items.map((dt) => {
+          return {
+            invoice_no: data.invoice_no,
+            type: 2,
+          };
+        });
+        return itemsData;
+      })
+      .flat();
+
+    const Trans_Data = [...UpdatedTransactions, ...UpdatedReturns];
+    // Remove duplicates based on invoice_no
+    const uniqueTrans_Data = Trans_Data.reduce((acc, current) => {
+      const x = acc.find((item) => item.invoice_no === current.invoice_no);
+      if (!x) {
+        return acc.concat([current]);
+      } else {
+        return acc;
+      }
+    }, []);
+    return successMessage(
+      res,
+      uniqueTrans_Data,
+      "Transactions retrieved successfully!"
+    );
+  } catch (err) {
+    console.error("Error occurred while fetching transactions:", err);
+    return createError(res, 500, err.message || "Internal Server Error");
+  }
+};
+
 module.exports = {
+  Get_Bill_No,
   getBranchCustomers,
   getAllCustomers,
   UpdateCustomer,

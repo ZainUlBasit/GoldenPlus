@@ -12,7 +12,7 @@ const reqNum = {
 };
 
 const CategorySchema = new Schema({
-  company_id: reqStr,
+  branchId: { type: mongoose.Types.ObjectId, ref: "Branch" },
   name: reqStr,
   branch: reqNum,
 });

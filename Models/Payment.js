@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const AutoIncrement = require("mongoose-sequence")(mongoose);
 
 const Schema = mongoose.Schema;
 
@@ -17,6 +18,10 @@ const PaymentSchema = new Schema({
   date: { type: Number, default: () => Math.floor(Date.now() / 1000) },
   desc: reqStr,
   branch: reqNum,
+  invoice_no: { type: Number },
 });
+
+// Apply the auto-increment plugin to the PaymentSchema for the invoice_no field
+PaymentSchema.plugin(AutoIncrement, { inc_field: "invoice_no" });
 
 module.exports = mongoose.model("Payment", PaymentSchema);

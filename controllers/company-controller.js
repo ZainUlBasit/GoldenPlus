@@ -28,10 +28,11 @@ const getBranchCompanies = async (req, res, next) => {
 
   let companies;
   try {
-    companies = await Company.find({ branch });
+    if (branch < 0) companies = await Company.find();
+    else companies = await Company.find({ branch });
   } catch (err) {
     console.log(err);
-    return createError(res, 400, "Internal Server Error. Please Try Again!");
+    return createError(res, 400, err.message);
   }
   if (!companies) {
     return createError(res, 404, "Companies record not found!");

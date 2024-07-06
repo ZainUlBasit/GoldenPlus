@@ -3,29 +3,23 @@ const { createError, successMessage } = require("../utils/ResponseMessage");
 const Stock = require("../Models/Stock");
 const Item = require("../Models/Item");
 const Company = require("../Models/Company");
+const RawMaterials = require("../Models/RawMaterialStock");
+const RawMaterialStock = require("../Models/RawMaterialStock");
 
-const AddStock = async (req, res) => {
+const AddRawMaterialStock = async (req, res) => {
   console.log(req.body);
-
   const stockValidationSchema = Joi.object({
-    branchId: Joi.string()
-      .regex(/^[0-9a-fA-F]{24}$/)
-      .required(),
+    branchId: Joi.string().required(),
     branch_name: Joi.string().required(),
-    branch: Joi.number().required(),
-    articleId: Joi.string()
-      .regex(/^[0-9a-fA-F]{24}$/)
-      .required(),
-    article_name: Joi.string().required(),
-    sizeId: Joi.string()
-      .regex(/^[0-9a-fA-F]{24}$/)
-      .required(),
-    size: Joi.string().required(),
+    supplierId: Joi.string().required(),
+    supplier_name: Joi.string().required(),
+    rm_name: Joi.string().required(),
     qty: Joi.number().required(),
     purchase: Joi.number().required(),
     invoice_no: Joi.string().required(),
     truck_no: Joi.string().required(),
     date: Joi.date().required(),
+    branch: Joi.number().required(),
     desc: Joi.string().required(),
   });
 
@@ -35,55 +29,52 @@ const AddStock = async (req, res) => {
   const {
     branchId,
     branch_name,
-    articleId,
-    article_name,
-    branch,
-    sizeId,
-    size,
+    supplierId,
+    supplier_name,
+    rm_name,
     qty,
     purchase,
     invoice_no,
     truck_no,
     date,
     desc,
+    branch,
   } = req.body;
 
   try {
-    // Create a new Stock document
-    const newStock = await new Stock({
+    // Create a new RawMaterialStock document
+    const newStock = await new RawMaterialStock({
       branchId,
       branch_name,
-      articleId,
-      article_name,
-      sizeId,
-      size,
+      branch,
+      supplierId,
+      supplier_name,
+      rm_name, // item name - Raw Material Item Name
       qty,
       purchase,
       total_amount: purchase * qty,
       invoice_no,
       truck_no,
-      date: Math.floor(new Date(date) / 1000),
+      date: Math.floor(new Date(date).getTime() / 1000),
       desc,
-      branch,
     }).save();
 
-    if (!newStock) return createError(res, 400, "Unable to add new Stock!");
+    const updateValue = {
+      $inc: { total: qty * purchase, remaining: qty * purchase },
+    };
 
-    const item = await Item.findById(sizeId);
-    if (!item) return createError(res, 404, "Item not found!");
-
-    const updatedItem = await Item.findByIdAndUpdate(
-      sizeId,
-      {
-        qty: Number(item.qty) + Number(qty),
-        in_qty: item.in_qty ? Number(item.in_qty) + Number(qty) : Number(qty),
-      },
+    // Assuming you have a Company model to update company accounts
+    const updatedSupplier = await Company.findByIdAndUpdate(
+      supplierId,
+      updateValue,
       { new: true }
     );
 
-    if (!updatedItem)
-      return createError(res, 400, "Unable to update item Quantity!");
+    if (!updatedSupplier)
+      return createError(res, 400, "Unable to update Supplier Accounts!");
 
+    if (!newStock)
+      return createError(res, 400, "Unable to add Stock in Raw Materials!");
     return successMessage(res, newStock, "Stock Successfully Added!");
   } catch (err) {
     console.error("Error adding stock:", err);
@@ -114,40 +105,33 @@ const GetStockByBranch = async (req, res) => {
   let { branchId } = req.body;
   if (!branchId) return createError(res, 422, "Invalid Branch Id!");
 
+  // let reqBody = companyId
+  //   ? {
+  //       companyId,
+  //       date: {
+  //         $gte: Math.floor(new Date(startDate) / 1000),
+  //         $lte: Math.floor(new Date(endDate) / 1000),
+  //       },
+  //     }
+  //   : {
+  //       date: {
+  //         $gte: 0,
+  //         $lte: Math.floor(Date.now() / 1000),
+  //       },
+  //     };
+
   // reqBody;
   try {
-    const StockStats = await Stock.find(
+    const StockStats = await RawMaterialStock.find(
       branchId || branchId !== -1
         ? {
             branchId,
           }
         : {}
-    )
-      .populate("branchId")
-      .populate("articleId")
-      .populate("sizeId");
+    ).populate("branchId");
 
     if (!StockStats)
-      return createError(
-        res,
-        404,
-        `No record found with Branch Id ${branchId}!`
-      );
-    // const UpdateStockStats = StockStats.map((dat) => {
-    //   return {
-    //     branch_name: dat.branch_name,
-    //     article_name: dat.article_name,
-    //     size: dat.size_name,
-    //     qty: dat.qty,
-    //     purchase: dat.purchase,
-    //     total_amount: dat.total_amount,
-    //     invoice_no: dat.invoice_no,
-    //     truck_no: dat.truck_no,
-    //     date: dat.date,
-    //     desc: dat.desc,
-    //     branch: dat.branch,
-    //   };
-    // });
+      return createError(res, 404, `No record found of Branch ${branchId}!`);
     return successMessage(res, StockStats, "Stock successfully retrieved!");
   } catch (err) {
     console.log("Error while getting Stock Stats: ", err);
@@ -156,7 +140,6 @@ const GetStockByBranch = async (req, res) => {
 };
 
 module.exports = {
-  AddStock,
-  GetStockByAdmin,
+  AddRawMaterialStock,
   GetStockByBranch,
 };

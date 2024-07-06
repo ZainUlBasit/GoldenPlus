@@ -24,30 +24,62 @@ const getAllExpenses = async (req, res, next) => {
   }
 };
 const getBranchExpenses = async (req, res) => {
-  const {
-    branch,
-    fromDate = 0,
-    toDate = Math.floor(Date.now() / 1000),
-  } = req.body;
-  console.log(req.body);
-  const startDate = Math.floor(new Date(fromDate) / 1000);
-  const endDate = Math.floor(new Date(toDate) / 1000);
-  if (!branch) return createError(res, 422, "Invalid Branch #");
-  let expenses;
+  const { branch, fromDate, toDate } = req.body;
+
+  // Validate dates
+  const startDate = new Date(fromDate);
+  const endDate = new Date(toDate);
+
+  if (isNaN(startDate) || isNaN(endDate)) {
+    return createError(res, 422, "Invalid date format");
+  }
+
+  // Convert dates to Unix timestamps in seconds
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+  const endTimestamp = Math.floor(endDate.getTime() / 1000);
+  // Check if fromDate is before or equal to toDate
+  if (startTimestamp > endTimestamp) {
+    return createError(
+      res,
+      422,
+      "From date must be less than or equal to To date"
+    );
+  }
+
+  // Validate branch
+  if (!branch) {
+    return createError(res, 422, "Invalid Branch #");
+  }
+
   try {
-    expenses = await Expense.find({
-      branch,
-      date: {
-        $gte: startDate,
-        $lte: endDate,
-      },
-    });
-    if (!expenses) return createError(res, 404, "No Expense Found");
+    let Payload =
+      branch === -1
+        ? {
+            date: {
+              $gte: startTimestamp,
+              $lte: endTimestamp,
+            },
+          }
+        : {
+            branch: Number(branch),
+            date: {
+              $gte: startTimestamp,
+              $lte: endTimestamp,
+            },
+          };
+    const expenses = await Expense.find(Payload);
+
+    if (!expenses || expenses.length === 0) {
+      return createError(res, 404, "No Expense Found");
+    }
+
     return successMessage(res, expenses, null);
   } catch (err) {
-    console.log(err);
+    console.error(err);
+    return createError(res, 500, "Internal Server Error");
   }
 };
+
 const addExpense = async (req, res, next) => {
   const {
     date = Math.floor(Date.now() / 1000),
@@ -88,10 +120,10 @@ const addExpense = async (req, res, next) => {
 };
 
 const deleteExpense = async (req, res, next) => {
-  const { expneseId } = req.body;
-  if (!expneseId) return createError(res, 422, "Invalid Expense Id!");
+  const { expenseId } = req.body;
+  if (!expenseId) return createError(res, 422, "Invalid Expense Id!");
   try {
-    const DeleteExpense = await Expense.findByIdAndDelete(expneseId);
+    const DeleteExpense = await Expense.findByIdAndDelete(expenseId);
     if (!DeleteExpense)
       return createError(
         res,
@@ -279,6 +311,31 @@ const AllSaleDetail = async (req, res) => {
   }
 };
 
+const UpdateBranch = async (req, res) => {
+  const { expenseId, payload } = req.body;
+  if (!expenseId || !payload)
+    return createError(res, 422, "Required fields are undefined!");
+
+  try {
+    const expenseUpdate = await Expense.findByIdAndUpdate(
+      expenseId,
+      { ...payload, date: Math.floor(new Date(payload.date) / 1000) },
+      {
+        new: true,
+      }
+    );
+    if (!expenseUpdate) return createError(res, 404, "No data found!");
+    else
+      return successMessage(
+        res,
+        expenseUpdate,
+        "Expnese Successfully Updated!"
+      );
+  } catch (err) {
+    return createError(res, 500, err.message || "Internal Server Error");
+  }
+};
+
 module.exports = {
   getBranchExpenses,
   getAllExpenses,
@@ -286,4 +343,5 @@ module.exports = {
   deleteExpense,
   SaleDetail,
   AllSaleDetail,
+  UpdateBranch,
 };

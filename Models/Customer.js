@@ -21,7 +21,7 @@ const reqNum = {
 const CustomerSchema = new Schema({
   name: reqStr,
   email: reqStr,
-  user_type: { type: Number, enum: [1, 2, 3], required: true }, // 1: Customer 2: Shop 3:Whole-Saler
+  // user_type: { type: Number, enum: [1, 2, 3], required: true }, // 1: Customer 2: Shop 3:Whole-Saler
   cnic: reqStr,
   contact: reqStr,
   address: reqStr,

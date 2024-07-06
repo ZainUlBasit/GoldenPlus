@@ -18,14 +18,13 @@ const reqDate = {
 };
 
 const itemSchema = new Schema({
-  code: reqStr,
-  name: reqStr,
-  companyId: { type: mongoose.Types.ObjectId, ref: "Company" },
+  size: reqStr,
+  branchId: { type: mongoose.Types.ObjectId, ref: "Branch" },
   articleId: { type: mongoose.Types.ObjectId, ref: "Article" },
-  unit: reqStr,
+  article_name: String,
+  branch_name: String,
   purchase: reqNum,
   sale: reqNum,
-  sale_shop: reqNum,
   in_qty: { type: Number, default: 0 },
   out_qty: { type: Number, default: 0 },
   qty: { type: Number, default: 0 }, // remaining qty

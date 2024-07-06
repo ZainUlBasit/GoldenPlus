@@ -1,15 +1,14 @@
 const router = require("express").Router();
 const { VerifyUserCookie, VerifyBranch } = require("../Middleware/auth");
-const StockController = require("../controllers/StockController");
+const RMController = require("../controllers/RawMaterialStockController");
 
-router.post("/add", VerifyUserCookie, VerifyBranch, StockController.AddStock);
 router.post(
-  "/all",
+  "/add",
   VerifyUserCookie,
   VerifyBranch,
-  StockController.GetStockByAdmin
+  RMController.AddRawMaterialStock
 );
-router.post("/branch", VerifyUserCookie, StockController.GetStockByBranch);
+router.post("/branch", VerifyUserCookie, RMController.GetStockByBranch);
 // router.patch("/update", StockController.UpdateSales);
 // router.delete("/delete", StockController.DeleteSale);
 

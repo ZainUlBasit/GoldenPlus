@@ -12,6 +12,8 @@ const reqNum = {
 
 const ProductSchema = new Schema({
   itemId: { type: mongoose.Types.ObjectId, ref: "Item" },
+  article_name: reqStr,
+  article_size: reqNum,
   qty: reqNum,
   price: reqNum,
   purchase: reqNum,

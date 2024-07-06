@@ -10,13 +10,12 @@ const UserSchema = new Schema({
   name: reqStr,
   email: reqStr,
   password: reqStr,
-  branchId: { type: mongoose.Types.ObjectId, ref: "branch" },
+  branchId: { type: mongoose.Types.ObjectId, ref: "Branch" },
   role: {
     type: Number,
-    enum: [1, 2, 3], // 1: admin, 2: Branch, 3: Customer
+    enum: [1, 2, 3], // 1: admin, 2: Branch
     required: true,
   },
-  branch_number: Number,
   imageUrl: String,
 });
 

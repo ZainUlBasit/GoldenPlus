@@ -4,14 +4,16 @@ const Transaction = require("../Models/Transaction");
 const Product = require("../Models/Product");
 const Item = require("../Models/Item");
 const Customer = require("../Models/Customer");
+const Return = require("../Models/Return");
 
 const CheckBillNumber = async (req, res, next) => {
   const { invoice_no } = req.body;
   try {
     // Retrieve transactions for the given invoice number
     const transactions = await Transaction.find({ invoice_no });
+    const returns = await Return.find({ invoice_no });
 
-    if (transactions.length > 0) {
+    if (transactions.length > 0 || returns.length > 0) {
       // If transactions exist with the given invoice number, return true
       return successMessage(
         res,
@@ -57,11 +59,23 @@ const CreateTransaction = async (req, res, next) => {
   try {
     const productIds = await Promise.all(
       items.map(async (item) => {
-        const { itemId, qty, price, purchase, amount } = item;
+        // article_name: reqStr,
+        // article_size: reqNum,
+        const {
+          itemId,
+          article_name,
+          article_size,
+          qty,
+          price,
+          purchase,
+          amount,
+        } = item;
         const savedProduct = await new Product({
           itemId,
           qty,
           price,
+          article_name,
+          article_size,
           purchase,
           amount,
         }).save();
@@ -111,13 +125,12 @@ const CreateTransaction = async (req, res, next) => {
 };
 
 const GetTransactions = async (req, res) => {
+  const { from, to, customerId } = req.body;
   console.log(req.body);
+
+  // return successMessage(res, transactions, "");
   try {
-    const {
-      from = 0,
-      to = Math.floor(Date.now() / 1000),
-      customerId,
-    } = req.body;
+    console.log(req.body);
 
     if (!customerId) {
       return createError(res, 422, "Customer ID is required!");
@@ -130,29 +143,38 @@ const GetTransactions = async (req, res) => {
     // Retrieve transactions for the given customer within the specified date range
     const transactions = await Transaction.find({
       customerId,
-      date: { $gte: fromDateInSeconds, $lte: toDateInSeconds },
+      date: {
+        $gte: Math.floor(new Date(from) / 1000),
+        $lte: Math.floor(new Date(to) / 1000),
+      },
     })
       .populate("customerId")
-      .populate({
-        path: "items",
-        populate: { path: "itemId" }, // Populate the itemId field inside the items array
-      });
+      .populate("items");
+    // .populate({ path: "items.itemId" });
+
+    console.log(transactions);
 
     const UpdatedTransactions = transactions
       .map((data) => {
-        const itemsData = data.items.map((dt) => {
-          return {
-            _id: dt._id,
-            itemId: dt.itemId._id,
-            date: data.date,
-            invoice_no: data.invoice_no,
-            name: dt.itemId.name,
-            qty: dt.qty,
-            purchase: dt.purchase,
-            price: dt.price,
-            amount: dt.amount,
-          };
-        });
+        const itemsData = data.items
+          .map((dt) => {
+            if (!dt.itemId) {
+              return null; // Skip items with null or undefined itemId
+            }
+            return {
+              _id: dt._id,
+              itemId: dt.itemId._id,
+              date: data.date,
+              invoice_no: data.invoice_no,
+              article_name: dt.article_name,
+              article_size: dt.article_size,
+              qty: dt.qty,
+              purchase: dt.purchase,
+              price: dt.price,
+              amount: dt.amount,
+            };
+          })
+          .filter((item) => item !== null); // Remove null entries from the array
         return itemsData;
       })
       .flat();
@@ -162,6 +184,125 @@ const GetTransactions = async (req, res) => {
       UpdatedTransactions,
       "Transactions retrieved successfully!"
     );
+  } catch (err) {
+    console.error("Error occurred while fetching transactions:", err);
+    return createError(res, 500, err.message || "Internal Server Error");
+  }
+};
+const GetInvoiceData = async (req, res) => {
+  const { invoice_no, type } = req.body;
+  // console.log(req.body);
+
+  // return successMessage(res, transactions, "");
+  try {
+    // console.log(req.body);
+
+    if (!invoice_no) {
+      return createError(res, 422, "Invoice # is required!");
+    } else if (!type) {
+      return createError(res, 422, "Type is required!");
+    }
+
+    // Retrieve transactions for the given customer within the specified date range
+    if (type === 1) {
+      const transactions = await Transaction.find({ invoice_no })
+        .populate("customerId")
+        .populate({
+          path: "items",
+          populate: {
+            path: "itemId",
+          },
+        });
+
+      const UpdatedTransactions = transactions
+        .map((data) => {
+          const itemsData = data.items
+            .map((dt) => {
+              if (!dt.itemId) {
+                return null; // Skip items with null or undefined itemId
+              }
+              return {
+                _id: dt._id,
+                itemId: dt.itemId._id,
+                date: data.date,
+                invoice_no: data.invoice_no,
+                article_name: dt.article_name,
+                article_size: dt.article_size,
+                qty: dt.qty,
+                purchase: dt.purchase,
+                price: dt.price,
+                amount: dt.amount,
+              };
+            })
+            .filter((item) => item !== null); // Remove null entries from the array
+          return itemsData;
+        })
+        .flat();
+      return successMessage(
+        res,
+        { Invoice_Info: transactions[0], Data: UpdatedTransactions },
+        "Transactions retrieved successfully!"
+      );
+    } else if (type === 2) {
+      const transactions = await Return.find({ invoice_no })
+        .populate("customerId")
+        .populate({
+          path: "items",
+          populate: {
+            path: "itemId",
+          },
+        });
+      const UpdatedTransactions = transactions
+        .map((data) => {
+          const itemsData = data.items.map((dt) => {
+            return {
+              _id: dt._id,
+              itemId: dt.itemId._id,
+              date: data.date,
+              invoice_no: data.invoice_no,
+              article_name: dt.article_name,
+              article_size: dt.article_size,
+              qty: dt.qty,
+              purchase: dt.purchase,
+              price: dt.price,
+              amount: dt.amount,
+            };
+          });
+          return itemsData;
+        })
+        .flat();
+
+      return successMessage(
+        res,
+        { Invoice_Info: transactions[0], Data: UpdatedTransactions },
+        "Returns retrieved successfully!"
+      );
+    }
+
+    // const UpdatedTransactions = transactions
+    //   .map((data) => {
+    //     const itemsData = data.items
+    //       .map((dt) => {
+    //         if (!dt.itemId) {
+    //           return null; // Skip items with null or undefined itemId
+    //         }
+    //         return {
+    //           _id: dt._id,
+    //           itemId: dt.itemId._id,
+    //           date: data.date,
+    //           invoice_no: data.invoice_no,
+    //           article_name: dt.article_name,
+    //           article_size: dt.article_size,
+    //           qty: dt.qty,
+    //           purchase: dt.purchase,
+    //           price: dt.price,
+    //           amount: dt.amount,
+    //         };
+    //       })
+    //       .filter((item) => item !== null); // Remove null entries from the array
+    //     return itemsData;
+    //   })
+    //   .flat();
   } catch (err) {
     console.error("Error occurred while fetching transactions:", err);
     return createError(res, 500, err.message || "Internal Server Error");
@@ -323,66 +464,72 @@ const DeleteInvoice = async (req, res) => {
 };
 
 const UpdateInvoiceItem = async (req, res) => {
-  const { customerId, InvoiceInfo, updateValue } = req.body;
+  const {
+    customerId,
+    CurrentInvoiceInfo,
+    DeleteInvoicesId,
+    UpdateInvoiceData,
+  } = req.body;
 
-  // console.log(req.body);
+  console.log(req.body);
   // return createError(res, 422, "testing!");
 
   try {
-    const UpdatedProduct = await Product.findByIdAndUpdate(
-      InvoiceInfo._id,
-      {
-        price: updateValue.price,
-        qty: updateValue.qty,
-        amount: updateValue.amount,
-      },
-      {
-        new: true,
-      }
-    );
+    // const UpdatedProduct = await Product.findByIdAndUpdate(
+    //   InvoiceInfo._id,
+    //   {
+    //     price: updateValue.price,
+    //     qty: updateValue.qty,
+    //     amount: updateValue.amount,
+    //   },
+    //   {
+    //     new: true,
+    //   }
+    // );
 
-    const UpdateTransaction = await Transaction.findOneAndUpdate(
-      {
-        invoice_no: InvoiceInfo.invoice_no,
-      },
-      {
-        $inc: {
-          total_amount:
-            -Number(InvoiceInfo.amount) + Number(updateValue.amount),
-        },
-      }, // Decrement qty field by decrementQty
-      { new: true }
-    );
+    // const UpdateTransaction = await Transaction.findOneAndUpdate(
+    //   {
+    //     invoice_no: InvoiceInfo.invoice_no,
+    //   },
+    //   {
+    //     $inc: {
+    //       total_amount:
+    //         -Number(InvoiceInfo.amount) + Number(updateValue.amount),
+    //     },
+    //   }, // Decrement qty field by decrementQty
+    //   { new: true }
+    // );
 
-    const updateCustomerAccount = await Customer.findByIdAndUpdate(
-      customerId,
-      {
-        $inc: {
-          total: -Number(InvoiceInfo.amount) + Number(updateValue.amount),
-          remaining: -Number(InvoiceInfo.amount) + Number(updateValue.amount),
-        },
-      }, // Decrement qty field by decrementQty
-      { new: true }
-    );
+    // const updateCustomerAccount = await Customer.findByIdAndUpdate(
+    //   customerId,
+    //   {
+    //     $inc: {
+    //       total: -Number(InvoiceInfo.amount) + Number(updateValue.amount),
+    //       remaining: -Number(InvoiceInfo.amount) + Number(updateValue.amount),
+    //     },
+    //   }, // Decrement qty field by decrementQty
+    //   { new: true }
+    // );
 
-    const ItemQtyUpdated = await Item.findByIdAndUpdate(
-      InvoiceInfo.itemId,
-      {
-        $inc: {
-          qty: Number(InvoiceInfo.qty) - Number(updateValue.qty),
-          out_qty: -Number(InvoiceInfo.qty) + Number(updateValue.qty),
-        },
-      }, // Decrement qty field by decrementQty
-      { new: true } // Return the updated document
-    );
+    // const ItemQtyUpdated = await Item.findByIdAndUpdate(
+    //   InvoiceInfo.itemId,
+    //   {
+    //     $inc: {
+    //       qty: Number(InvoiceInfo.qty) - Number(updateValue.qty),
+    //       out_qty: -Number(InvoiceInfo.qty) + Number(updateValue.qty),
+    //     },
+    //   }, // Decrement qty field by decrementQty
+    //   { new: true } // Return the updated document
+    // );
 
-    if (updateCustomerAccount)
-      return successMessage(
-        res,
-        UpdateTransaction,
-        "Invoice item successfully updated!"
-      );
-    else return createError(res, 400, "Unable to Update Invoice Item");
+    // if (updateCustomerAccount)
+    // return successMessage(
+    //   res,
+    //   UpdateTransaction,
+    //   "Invoice item successfully updated!"
+    // );
+    // else
+    return createError(res, 400, "Unable to Update Invoice Item");
   } catch (err) {
     return createError(res, 400, err.message || "Internal server error!");
   }
@@ -395,4 +542,5 @@ module.exports = {
   DeleteInvoice,
   CheckBillNumber,
   UpdateInvoiceItem,
+  GetInvoiceData,
 };

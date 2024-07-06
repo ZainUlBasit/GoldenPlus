@@ -14,7 +14,7 @@ const CreateTransaction = async (req, res, next) => {
     invoice_no,
   } = req.body;
 
-  if (!customerId || !date || discount === "")
+  if (!customerId || !date)
     return createError(res, 422, "Required fields are undefined!");
 
   if (!Array.isArray(items))
@@ -23,13 +23,21 @@ const CreateTransaction = async (req, res, next) => {
   try {
     const productIds = await Promise.all(
       items.map(async (item) => {
-        const { itemId, qty, price, purchase, amount } = item;
-
-        // Save the product
+        const {
+          itemId,
+          article_name,
+          article_size,
+          qty,
+          price,
+          purchase,
+          amount,
+        } = item;
         const savedProduct = await new Product({
           itemId,
           qty,
           price,
+          article_name,
+          article_size,
           purchase,
           amount,
         }).save();

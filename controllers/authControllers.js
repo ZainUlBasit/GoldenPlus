@@ -31,6 +31,10 @@ function authControllers() {
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch)
         return createError(res, 403, "email or password doesn't match!");
+      let populatedUser = user;
+      if (user.role === 2) {
+        populatedUser = await user.populate("branchId");
+      }
       const jwtBody =
         user.role === 1
           ? {
@@ -40,7 +44,7 @@ function authControllers() {
           : user.role === 2 && {
               _id: user._id,
               role: user.role,
-              branch: user.branch_number,
+              branch: user.branchId.branch_number,
             };
       // const { accessToken, refreshToken } = JwtService.generateToken(jwtBody);
 
@@ -77,7 +81,7 @@ function authControllers() {
       // const userdata = userDto(user);
       return successMessage(
         res,
-        { user: user, token: token },
+        { user: user.role === 2 ? populatedUser : user, token: token },
         "Successfully Logged In!"
       );
     },

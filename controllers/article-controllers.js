@@ -4,22 +4,31 @@ const Article = require("../Models/Article");
 
 const addArticle = async (req, res, next) => {
   let article;
-  const { company_id, name, branch } = req.body;
+  const { branchId, name, branch } = req.body;
 
   const reqStr = Joi.string().required();
   const reqNum = Joi.number().required();
 
   const articleSchema = Joi.object({
-    company_id: reqStr,
+    branchId: reqStr,
     name: reqStr,
     branch: reqNum,
   });
   const { error } = articleSchema.validate(req.body);
   if (error) return createError(res, 422, error.message);
 
+  const articleExists = await Article.exists({
+    branchId,
+    name,
+    branch,
+  });
+
+  if (articleExists)
+    return createError(res, 409, "Email already exists in Branch # " + branch);
+
   try {
     article = await new Article({
-      company_id,
+      branchId,
       name,
       branch,
     }).save();
@@ -49,9 +58,14 @@ const getBranchArticles = async (req, res, next) => {
 
   let articles;
   try {
-    articles = await Article.find({ branch });
+    if (branch < 0) articles = await Article.find();
+    else articles = await Article.find({ branch });
     if (!articles) return createError(res, 404, "No Article record found!");
-    return successMessage(res, articles, null);
+    return successMessage(
+      res,
+      articles,
+      "Articles data successfully retrieved!"
+    );
   } catch (err) {
     console.log(err);
     return createError(res, 500, err.message || err);
@@ -108,7 +122,7 @@ const deleteArticle = async (req, res, next) => {
       return createError(
         res,
         400,
-        "Such Article with articleId does not exist!"
+        "Such Article with " + articleId + " does not exist!"
       );
     else
       return successMessage(

@@ -13,13 +13,12 @@ const reqNum = {
 };
 
 const StockSchema = new Schema({
-  sizeId: { type: mongoose.Types.ObjectId, ref: "Item" },
-  size: reqStr,
   branchId: { type: mongoose.Types.ObjectId, ref: "Branch" },
   branch_name: reqStr,
   branch: reqNum,
-  articleId: { type: mongoose.Types.ObjectId, ref: "Article" },
-  article_name: reqStr,
+  supplierId: { type: mongoose.Types.ObjectId, ref: "Company" },
+  supplier_name: reqStr,
+  rm_name: reqStr,
   purchase: reqNum,
   qty: reqNum,
   total_amount: reqNum,
@@ -32,4 +31,4 @@ const StockSchema = new Schema({
   desc: reqStr,
 });
 
-module.exports = mongoose.model("stock", StockSchema);
+module.exports = mongoose.model("RawMaterialStock", StockSchema);

@@ -22,6 +22,8 @@ const ReportRoutes = require("./routes/report.routes");
 const PaymentRoutes = require("./routes/payment.routes");
 const StockRoutes = require("./routes/stock-routes");
 const TransactionkRoutes = require("./routes/transaction-route");
+const BranchRoutes = require("./routes/branch.routes");
+const RM_Routes = require("./routes/raw-material-routes");
 const { successMessage } = require("./utils/ResponseMessage");
 
 // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -64,6 +66,7 @@ mongoose
 app.use("/api/auth", AuthRoutes);
 app.use("/api/company", CompanyRoutes);
 app.use("/api/item", ItemRoutes);
+app.use("/api/raw-material", RM_Routes);
 app.use("/api/article", ArticleRoutes);
 app.use("/api/customer", CustomerRoutes);
 app.use("/api/report", ReportRoutes);
@@ -71,6 +74,7 @@ app.use("/api/payment", PaymentRoutes);
 app.use("/api/stock", StockRoutes);
 app.use("/api/sale-return", SalesReturnRoutes);
 app.use("/api/transaction", TransactionkRoutes);
+app.use("/api/branch", BranchRoutes);
 
 server.listen(port, () => {
   console.log(`Listening to port ${port}`);
